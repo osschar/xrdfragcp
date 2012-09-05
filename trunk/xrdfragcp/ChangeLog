@@ -1,0 +1,8 @@
+2012-09-05  Matevz Tadel <matevz.tadel@ijs.si>
+
+	Initial commit.
+
+	* ChangeLog:
+	* Makefile:
+	* xrdfragcp.cxx:
+	First version, gets a single fragment and dumps it to stdout.

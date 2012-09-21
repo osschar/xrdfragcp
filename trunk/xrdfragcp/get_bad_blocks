@@ -1,0 +1,79 @@
+#!/usr/bin/python
+
+import sys
+import re
+from subprocess import Popen,PIPE
+import time
+
+HADOOP_BIN = '/usr/bin/hadoop'
+BLK_PATTERN = re.compile(r'[0-9]+\. blk_')
+
+def get_bad_blocks(path):
+    p = Popen([HADOOP_BIN, 'fsck', path, '-files', '-blocks'], stdout=PIPE)
+
+    offset = 0
+    prev_missing = False
+    size_missing = 0
+    offset_missing = 0
+
+    bad_blocks = []
+    for line in p.stdout:
+        if "Total size:" in line:
+            break
+        if BLK_PATTERN.match(line):
+            fields = line.split()
+            len = int(fields[2].split('=')[1])
+            if not 'repl' in line:
+                if prev_missing:
+                    size_missing += len
+                else:
+                    offset_missing = offset
+                    size_missing = len
+
+                prev_missing = True
+            else:
+                if prev_missing:
+                    bad_blocks.append((offset_missing, size_missing))
+                    prev_missing = False
+                    size_missing = 0
+            offset += len
+    # don't forget the remaining bad blocks
+    if prev_missing:
+        bad_blocks.append((offset_missing, size_missing))
+
+    p.stdout.close()
+    return bad_blocks
+
+def get_bad_files(bad_files, path):
+    pattern = re.compile(r"(%s[^:]*):\s+" % path)
+
+    p = Popen([HADOOP_BIN, 'fsck', path], stdout=PIPE)
+
+    for line in p.stdout:
+        if "Total size:" in line:
+            break
+        if 'Under replicated' not in line:
+            m = pattern.match(line)
+            if m and m.group(1) not in bad_files:
+                bad_files.append(m.group(1))
+    
+    p.stdout.close()
+
+bad_files = []
+
+for path in sys.argv[1:]:
+    print "searching for broken files at:"
+    print path
+    get_bad_files(bad_files, path)
+
+#print bad_files
+
+print "%s bad files found" % len(bad_files)
+
+for f in bad_files:
+    results = get_bad_blocks(f)
+    sys.stdout.write("%s" % f)
+    for b in results:
+        sys.stdout.write(" %s,%s" % (b[0],b[1]))
+    print
+

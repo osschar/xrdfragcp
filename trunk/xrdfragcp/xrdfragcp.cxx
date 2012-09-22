@@ -62,11 +62,12 @@ int main(int argc, char *argv[])
     exit(1);
   }
 
-  std::auto_ptr<char> buf( new char[size] );
+  std::vector<char> buf;
+  buf.resize(size);
 
-  c->Read(buf.get(), offset, size);
+  c->Read(&buf[0], offset, size);
 
-  write(1, buf.get(), size);
+  write(1, &buf[0], size);
 
   return 0;
 }

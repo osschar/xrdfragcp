@@ -1,0 +1,25 @@
+hdtools
+=======
+
+Build Requirements
+------------------
+hadoop-0.20
+javac
+
+A working hadoop install is not required to build, just the hadoop-0.20 rpm.
+See:
+https://www.opensciencegrid.org/bin/view/Documentation/Release3/InstallHadoopSE
+
+Build Instructions
+------------------
+javac -classpath '/usr/lib/hadoop-0.20/*' hdtools/HadoopTools.java
+
+Deployment
+----------
+jar cvfm hdtools.jar hdtools/Manifest.txt hdtools
+
+To Run
+------
+Assumes hadoop client is installed and configured on a working hadoop cluster.
+
+hadoop jar hdtools.jar repair block_map.txt HADOOP_INFILE LOCAL_OUTFILE

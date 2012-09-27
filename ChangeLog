@@ -1,3 +1,8 @@
+2012-09-26  Matevz Tadel <matevz.tadel@ijs.si>
+
+	* xrdfragcp.cxx:
+	Add command-line option parsing, getting of several fragments.
+
 2012-09-05  Matevz Tadel <matevz.tadel@ijs.si>
 
 	Initial commit.

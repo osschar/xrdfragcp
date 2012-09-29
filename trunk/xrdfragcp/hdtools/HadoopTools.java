@@ -16,7 +16,7 @@ import java.util.*;
 //
 //import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
-import org.apache.hadoop.fs.shell.CommandFormat;
+//import org.apache.hadoop.fs.shell.CommandFormat;
 //import org.apache.hadoop.fs.shell.Count;
 //import org.apache.hadoop.io.DataInputBuffer;
 //import org.apache.hadoop.io.DataOutputBuffer;
@@ -34,6 +34,7 @@ import org.apache.hadoop.util.ToolRunner;
 //import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.fs.*;
 //import org.apache.hadoop.conf.*;
+import org.apache.commons.cli.*;
 
 public class HadoopTools extends Configured implements Tool {
   private static class BlockLocation{
@@ -75,15 +76,21 @@ public class HadoopTools extends Configured implements Tool {
     return blockMap;
   }
   
-  private void tail(String[] argv, int pos) throws IOException {
-    CommandFormat c = new CommandFormat("tail", 1, 1, "f");
+  private void tail(String[] argv) throws IOException,ParseException {
+    CommandLineParser parser = new GnuParser();
+    Options options = new Options();
+    options.addOption("f", false, "follow");
+    CommandLine line = parser.parse(options, argv);
+    //CommandFormat c = new CommandFormat("tail", 1, 1, "f");
     String src = null;
     Path path = null;
 
-    List<String> parameters = c.parse(argv, pos);
-    src = parameters.get(0);
+    src = line.getArgs()[0];
+    //List<String> parameters = c.parse(argv, pos);
+    //src = parameters.get(0);
  
-    boolean foption = c.getOpt("f") ? true: false;
+    //boolean foption = c.getOpt("f") ? true: false;
+    boolean foption = line.hasOption("f") ? true: false;
     
     path = new Path(src);
     FileSystem srcFs = path.getFileSystem(getConf());
@@ -120,12 +127,9 @@ public class HadoopTools extends Configured implements Tool {
     }
   }
   
-  private void explode(String[] argv, int pos) throws IOException {
-    CommandFormat c = new CommandFormat("repair", 2, 2);
-    List<String> parameters = c.parse(argv, pos);
-    
-    String inFile = parameters.get(0);
-    String outFile = parameters.get(1);
+  private void explode(String[] argv) throws IOException {
+    String inFile = argv[0];
+    String outFile = argv[1];
     
     Path path = new Path(inFile);
     FileSystem srcFs = path.getFileSystem(getConf());
@@ -172,25 +176,49 @@ public class HadoopTools extends Configured implements Tool {
     }
   }
 
-  private void repair(String[] argv, int pos) throws IOException {
-    CommandFormat c = new CommandFormat("repair", 3, 3);
-    List<String> parameters = c.parse(argv, pos);
+  private void repair(String[] argv) throws IOException,ParseException {
+    CommandLineParser parser = new GnuParser();
+    Options options = new Options();
+    options.addOption("p", "prefix", true, "prefix");
+    options.addOption("o", "outfile", true, "outfile");
+    CommandLine line = parser.parse(options, argv);
     
-    String mapFile = parameters.get(0);
-    String inFile = parameters.get(1);
-    String outFile = parameters.get(2);
+    String[] args = line.getArgs();
+    String inFile = args[0];
     
-    HashMap<String, BlockLocation[]> blockMap = parseMapFile(mapFile);
+    String basename = new File(inFile).getName(); // need basename for later
     
-    BlockLocation[] badBlocks = blockMap.get(inFile);
+    String prefix;
+    String outFile;
+    if (line.hasOption("p")) {
+      prefix = line.getOptionValue("p");
+    }
+    else {
+      prefix = basename;
+    }
+    if (line.hasOption("o"))
+      outFile = line.getOptionValue("o");
+    else
+      outFile = basename;
+    
+    //String mapFile = argv[0];
+    //String inFile = argv[1];
+    //String outFile = argv[2];
+    
+    //HashMap<String, BlockLocation[]> blockMap = parseMapFile(mapFile);
+    
+    BlockLocation[] badBlocks = new BlockLocation[args.length - 1];
+    for (int i = 1; i < args.length; i++) {
+        String[] loc = args[i].split(",");
+        badBlocks[i - 1] = new BlockLocation(Long.valueOf(loc[0]), Long.valueOf(loc[1]));
+    }
     
     Path path = new Path(inFile);
     FileSystem srcFs = path.getFileSystem(getConf());
     if (srcFs.getFileStatus(path).isDir()) {
       throw new IOException("Source must be a file.");
     }
-    
-    String basename = new File(inFile).getName(); // need basename for later
+      
     //long fileSize = srcFs.getFileStatus(path).getLen();
     //long blockSize = srcFs.getFileStatus(path).getBlockSize();
     // use checksum size as buffer size since block is guaranteed
@@ -222,7 +250,7 @@ public class HadoopTools extends Configured implements Tool {
         System.out.println("skip; pos:" + inHd.getPos());
         
         // now read in the good bytes from local file
-        inLocal = new FileInputStream(basename + "." + bl.offset);
+        inLocal = new FileInputStream(prefix + "-" + bl.offset + "-" + bl.nBytes);
         
         for (int i = 0; i < bl.nBytes / bufSize; i++) {
           inLocal.read(buffer);
@@ -254,21 +282,23 @@ public class HadoopTools extends Configured implements Tool {
     }
   }
 
-  public int run(String argv[]) {
+  public int run(String argv[]) throws ParseException {
     // comment out for now, not sure what logging it suppresses
     //getConf().setQuietMode(true);
     if (argv.length < 1) {
       printHelp();
       return 1;
     }
-    
+    String[] cmdArgv = new String[argv.length - 1];
+
+    System.arraycopy(argv, 1, cmdArgv, 0, cmdArgv.length);
     try {
       if (argv[0].equals("tail"))
-        tail(argv,1);
+        tail(cmdArgv);
       else if (argv[0].equals("repair"))
-        repair(argv, 1);
+        repair(cmdArgv);
       else if (argv[0].equals("explode"))
-        explode(argv, 1); 
+        explode(cmdArgv); 
       else {
         printHelp();
         return 1;

@@ -12,7 +12,7 @@ https://www.opensciencegrid.org/bin/view/Documentation/Release3/InstallHadoopSE
 
 Build Instructions
 ------------------
-javac -classpath '/usr/lib/hadoop-0.20/*' hdtools/HadoopTools.java
+javac -classpath '/usr/lib/hadoop-0.20/*:/usr/lib/hadoop-0.20/lib/*' hdtools/HadoopTools.java
 
 Deployment
 ----------

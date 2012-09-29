@@ -61,9 +61,8 @@ def get_bad_files(bad_files, path):
 
 def print_help():
     print '''\
-Usage: get_bad_blocks BLOCK_MAP [PATH]...
+Usage: get_bad_blocks [PATH]...
 
-BLOCK_MAP file to output block map to
 PATH      path in hadoop to consider for repairs'''
 
 bad_files = []
@@ -72,13 +71,11 @@ if len(sys.argv) > 1 and sys.argv[1] == '-h':
     print_help()
     sys.exit(0)
 
-if len(sys.argv) < 3:
+if len(sys.argv) < 2:
     print_help()
     sys.exit(1)
 
-fpath = sys.argv[1]
-
-for path in sys.argv[2:]:
+for path in sys.argv[1:]:
     #print "searching for broken files at:"
     #print path
     get_bad_files(bad_files, path)
@@ -87,14 +84,10 @@ for path in sys.argv[2:]:
 
 #print "%s bad files found" % len(bad_files)
 
-fout = open(fpath, 'w')
-
 for f in bad_files:
     results = get_bad_blocks(f)
-    fout.write("%s" % f)
+    sys.stdout.write("%s" % f)
     for b in results:
-        fout.write(" %s,%s" % (b[0],b[1]))
-    fout.write('\n')
-
-fout.close()
+        sys.stdout.write(" %s,%s" % (b[0],b[1]))
+    sys.stdout.write('\n')
 

@@ -1,4 +1,4 @@
-xrdloc := /usr/local
+xrdloc := /usr
 
 xrdfragcp: xrdfragcp.cxx
 	${CXX} -o $@ -I${xrdloc}/include/xrootd -L${xrdloc}/lib64 -lXrdClient -pthread $<

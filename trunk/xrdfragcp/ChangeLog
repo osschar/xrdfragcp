@@ -1,3 +1,11 @@
+2012-10-03  Matevz Tadel <matevz.tadel@ijs.si>
+
+	* xrd-hadoop-healer.pl:
+	New file, wrapper gluing together all other commands.
+
+	* Makefile:
+	Make default xrd install dir /usr.
+
 2012-09-26  Matevz Tadel <matevz.tadel@ijs.si>
 
 	* xrdfragcp.cxx:

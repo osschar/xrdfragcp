@@ -239,9 +239,8 @@ public class HadoopTools extends Configured implements Tool {
       for (BlockLocation bl : badBlocks) {
         System.out.println("offset:" + bl.offset);
        
-        // not sure if casting to int is smart here
-        int numToRead =  (int)(bl.offset - inHd.getPos()) / bufSize;
-        for (int i = 0; i < numToRead; i++) {
+        long numToRead =  (bl.offset - inHd.getPos()) / bufSize;
+        for (long i = 0; i < numToRead; i++) {
           inHd.read(buffer);
           out.write(buffer);
           System.out.println("write; pos:" + inHd.getPos());
@@ -252,7 +251,7 @@ public class HadoopTools extends Configured implements Tool {
         // now read in the good bytes from local file
         inLocal = new FileInputStream(prefix + "-" + bl.offset + "-" + bl.nBytes);
         
-        for (int i = 0; i < bl.nBytes / bufSize; i++) {
+        for (long i = 0; i < bl.nBytes / bufSize; i++) {
           inLocal.read(buffer);
           out.write(buffer);
         }

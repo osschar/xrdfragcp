@@ -8,6 +8,9 @@
 //   ./xrdfragcp --frag 0 1024 --frag 2048 1024 root://xrootd.unl.edu//store/mc/Summer12/WJetsToLNu_TuneZ2Star_8TeV-madgraph-tarball/AODSIM/PU_S7_START52_V9-v2/00000/E47B9F8B-42EF-E111-A3A4-003048FFD756.root
 
 #include "XrdClient/XrdClient.hh"
+#include "XrdClient/XrdClientAdmin.hh"
+
+#include <pcrecpp.h>
 
 #include <memory>
 #include <string>
@@ -56,6 +59,8 @@ public:
   void ParseArgs();
 
   void GetFrags();
+
+  void GetChecksum();
 };
 
 //==============================================================================
@@ -212,6 +217,35 @@ void App::GetFrags()
   }
 }
 
+void App::GetChecksum()
+{
+  std::string url_proto_host, url_file;
+  pcrecpp::RE re("(\\w+://[^/]+)/(/[^?]+)");
+  re.PartialMatch(mUrl, &url_proto_host, &url_file);
+
+  std::cout << "And the lucky shit is: '" << url_proto_host << "' unt '" << url_file << "'\n";
+
+  // Fuck me silly, copied from XrdCommandLine.cc
+  // url_proto_host += "//dummy";
+  
+  std::auto_ptr<XrdClientAdmin> ca( new XrdClientAdmin(mUrl.c_str()) );
+  if ( ! ca->Connect())
+  {
+      fprintf(stderr, "Connecting with XrdClientAdmin failed.\n");
+      exit(1);
+  }
+
+  unsigned char *csum = 0;
+  long  ret = ca->GetChecksum((unsigned char *) url_file.c_str(), &csum);
+  if (ret <= 0)
+  {
+    fprintf(stderr, "Retrival of checksum failed.\n");
+    exit(1);
+  }
+
+  std::cout << "Checksumma retval is " << ret << " and da sum '" << csum << "'\n";
+}
+
 //==============================================================================
 
 int main(int argc, char *argv[])
@@ -220,6 +254,10 @@ int main(int argc, char *argv[])
 
   app.ReadArgs(argc, argv);
   app.ParseArgs();
+
+  // Testing of check-sum retrieval ... works not.
+  // app.GetChecksum();
+  // return 0;
 
   app.GetFrags();
 

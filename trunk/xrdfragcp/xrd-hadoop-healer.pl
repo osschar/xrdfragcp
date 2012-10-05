@@ -42,6 +42,9 @@ for $dir (@DIRS)
     $xrd_file =~ s/^$HDP_PREFIX//;
     $xrd_file = $XRD_PREFIX . $xrd_file . $XRD_POSTFIX;
 
+    my @hdp_stats = split(' ', `hadoop fs -ls $hdp_file | tail -n 1`);
+    # print "user ~ $hdp_stats[2], group ~ $hdp_stats[3]\n";
+
     my @frag_args;
     my @repair_args;
     while (my $frag = shift @els)
@@ -59,10 +62,10 @@ for $dir (@DIRS)
     print "Executing: $xrdfc_cmd\n";
     system $xrdfc_cmd and die "Execution of $xrdfc_cmd failed.";
 
-    my $repair_cmd = join("", $REPAIR,
-                              "--prefix", $FRAGMENT_NAME,
-                              "--outfile", $FIXED_FILE_NAME,
-                              $hdp_file);
+    my $repair_cmd = join(" ", $REPAIR,
+                               "--prefix", $FRAGMENT_NAME,
+                               "--outfile", $FIXED_FILE_NAME,
+                               $bfl);
     print "Executing: $repair_cmd\n";
     # MT: This doesn't quite work yet ....
     system $repair_cmd and die "Execution of $repair_cmd failed.";
@@ -71,6 +74,8 @@ for $dir (@DIRS)
     print "Now should register $FIXED_FILE_NAME as $basename ...\n";
 
     # And remove fragments, fixed-file
+    # unlink $FIXED_FILE_NAME, <$FRAGMENT_NAME-*>;
+    print join(" ", "rm",  $FIXED_FILE_NAME, <$FRAGMENT_NAME-*>), "\n";
   }
   close BFS;
 }

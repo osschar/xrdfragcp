@@ -1,3 +1,9 @@
+2012-10-08  Matevz Tadel <matevz@desire.physics.ucsd.edu>
+
+	* xrd-hadoop-healer.pl:
+	Read checksums written by Phedex and store them into a hash ... if
+	they exist.
+
 2012-10-03  Matevz Tadel <matevz.tadel@ijs.si>
 
 	* xrd-hadoop-healer.pl:

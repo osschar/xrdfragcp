@@ -14,6 +14,8 @@ $HDP_PREFIX  = "/cms/phedex";
 $XRD_PREFIX  = "root://xrootd.unl.edu/";
 $XRD_POSTFIX = "?tried=xrootd.t2.ucsd.edu";
 
+$CKSUM_PREFIX = "/hadoop/cksums";
+
 $FRAGMENT_NAME   = "fragment";
 $FIXED_FILE_NAME = "fixed-file";
 
@@ -44,6 +46,21 @@ for $dir (@DIRS)
 
     my @hdp_stats = split(' ', `hadoop fs -ls $hdp_file | tail -n 1`);
     # print "user ~ $hdp_stats[2], group ~ $hdp_stats[3]\n";
+    my ($hdp_user, $hdp_group) = ($hdp_stats[2], $hdp_stats[3]);
+
+    my %hdp_cksums = ();
+    my $have_cksums;
+    {
+      open CKS, "$CKSUM_PREFIX$hdp_file" or last;
+      while (my $ckl = <CKS>)
+      {
+        chomp $ckl;
+        $ckl =~ m/^(\w+):(\w+)$/ or die "Bad checksum entry '$ckl'";
+        $hdp_cksums{$1} = $2;
+      }
+      close CKS;
+      $have_cksums = 1;
+    }
 
     my @frag_args;
     my @repair_args;

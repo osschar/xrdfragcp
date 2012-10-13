@@ -181,6 +181,7 @@ public class HadoopTools extends Configured implements Tool {
     Options options = new Options();
     options.addOption("p", "prefix", true, "prefix");
     options.addOption("o", "outfile", true, "outfile");
+    options.addOption("v", false, "vebose");
     CommandLine line = parser.parse(options, argv);
     
     String[] args = line.getArgs();
@@ -188,18 +189,9 @@ public class HadoopTools extends Configured implements Tool {
     
     String basename = new File(inFile).getName(); // need basename for later
     
-    String prefix;
-    String outFile;
-    if (line.hasOption("p")) {
-      prefix = line.getOptionValue("p");
-    }
-    else {
-      prefix = basename;
-    }
-    if (line.hasOption("o"))
-      outFile = line.getOptionValue("o");
-    else
-      outFile = basename;
+    String prefix = line.hasOption("p") ? line.getOptionValue("p") : basename;
+    String outFile = line.hasOption("o") ? line.getOptionValue("o") : basename;
+    boolean verbose = line.hasOption("v");
     
     //String mapFile = argv[0];
     //String inFile = argv[1];
@@ -235,11 +227,14 @@ public class HadoopTools extends Configured implements Tool {
       out = new FileOutputStream(outFile);
       
       long curPos = 0;
-      System.out.println("cur pos: " + curPos);
+      
+      if (verbose)
+        System.out.println("cur pos: " + curPos);
+      
       for (BlockLocation bl : badBlocks) {
-        //System.out.println("offset:" + bl.offset);
         long numBytes = bl.offset - inHd.getPos();
-        System.out.println("copying " + numBytes + " bytes from hadoop");
+        if (verbose)
+          System.out.println("copying " + numBytes + " bytes from hadoop");
         
         for (long i = 0; i < numBytes / bufSize; i++) {
           inHd.read(buffer);
@@ -247,11 +242,13 @@ public class HadoopTools extends Configured implements Tool {
         }
         inHd.skip(bl.nBytes);
         curPos += numBytes;
-        System.out.println("cur pos: " + curPos);
+        if (verbose)
+          System.out.println("cur pos: " + curPos);
         
         // now read in the good bytes from local file        
         String blockFile = prefix + "-" + bl.offset + "-" + bl.nBytes;
-        System.out.println("copying " + bl.nBytes + " bytes from " + blockFile);
+        if (verbose)
+          System.out.println("copying " + bl.nBytes + " bytes from " + blockFile);
         
         inLocal = new FileInputStream(blockFile);
         
@@ -269,7 +266,8 @@ public class HadoopTools extends Configured implements Tool {
             out.write(buffer, 0, bytesRead);
           curPos += bl.nBytes % bufSize;
         }
-        System.out.println("cur pos: " + curPos);
+        if (verbose)
+          System.out.println("cur pos: " + curPos);
         inLocal.close();
       }
       // if there are any good bytes left in hadoop read the rest
@@ -279,7 +277,7 @@ public class HadoopTools extends Configured implements Tool {
         out.write(buffer, 0, bytesRead);
         curPos += bytesRead;
       }
-      if (curPos > oldPos) {
+      if (verbose && curPos > oldPos) {
         System.out.println("copied remaining " + (curPos - oldPos) + " bytes from hadoop");
       }
     

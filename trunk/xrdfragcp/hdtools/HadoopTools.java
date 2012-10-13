@@ -76,11 +76,13 @@ public class HadoopTools extends Configured implements Tool {
     return blockMap;
   }
   
-  private void tail(String[] argv) throws IOException,ParseException {
+  private void tail(String[] argv) throws IOException {
     CommandLineParser parser = new GnuParser();
     Options options = new Options();
     options.addOption("f", false, "follow");
-    CommandLine line = parser.parse(options, argv);
+    CommandLine line;
+    try {line = parser.parse(options, argv);}
+    catch (ParseException e) {return;}
     //CommandFormat c = new CommandFormat("tail", 1, 1, "f");
     String src = null;
     Path path = null;
@@ -176,13 +178,19 @@ public class HadoopTools extends Configured implements Tool {
     }
   }
 
-  private void repair(String[] argv) throws IOException,ParseException {
+  private int repair(String[] argv) throws IOException {
     CommandLineParser parser = new GnuParser();
     Options options = new Options();
     options.addOption("p", "prefix", true, "prefix");
     options.addOption("o", "outfile", true, "outfile");
     options.addOption("v", false, "vebose");
-    CommandLine line = parser.parse(options, argv);
+    //CommandLine line = parser.parse(options, argv);
+    CommandLine line;
+    try {line = parser.parse(options, argv);}
+    catch (ParseException e) {
+      System.err.println(e.getMessage());
+      return 1; 
+    }
     
     String[] args = line.getArgs();
     String inFile = args[0];
@@ -201,14 +209,33 @@ public class HadoopTools extends Configured implements Tool {
     
     BlockLocation[] badBlocks = new BlockLocation[args.length - 1];
     for (int i = 1; i < args.length; i++) {
+        if (!args[i].matches("\\d+,\\d+")) {
+          System.err.println("Invalid offset,len pair: " + args[i]);
+          return 1;
+        }
         String[] loc = args[i].split(",");
+        // ensure block file exists
+        String blockFile = prefix + "-" + loc[0] + "-" + loc[1];
+        if (!new File(blockFile).exists()) {
+          System.err.println("Block file does not exist: " + blockFile);
+          return 1;
+        }
         badBlocks[i - 1] = new BlockLocation(Long.valueOf(loc[0]), Long.valueOf(loc[1]));
     }
     
     Path path = new Path(inFile);
     FileSystem srcFs = path.getFileSystem(getConf());
-    if (srcFs.getFileStatus(path).isDir()) {
-      throw new IOException("Source must be a file.");
+    
+    // check first if file is accessible in hadoop
+    FileStatus fileStatus;
+    try {fileStatus = srcFs.getFileStatus(path);}
+    catch (IOException e) {
+      System.err.println(e.getMessage());
+      return 1;
+    }
+    if (fileStatus.isDir()) {
+      System.err.println("Source must be a file: " + path);
+      return 1;
     }
       
     //long fileSize = srcFs.getFileStatus(path).getLen();
@@ -290,9 +317,10 @@ public class HadoopTools extends Configured implements Tool {
       if (out != null)
         out.close();
     }
+    return 0;
   }
 
-  public int run(String argv[]) throws ParseException {
+  public int run(String argv[]) throws IOException {
     // comment out for now, not sure what logging it suppresses
     //getConf().setQuietMode(true);
     if (argv.length < 1) {
@@ -302,27 +330,20 @@ public class HadoopTools extends Configured implements Tool {
     String[] cmdArgv = new String[argv.length - 1];
 
     System.arraycopy(argv, 1, cmdArgv, 0, cmdArgv.length);
-    try {
-      if (argv[0].equals("tail"))
-        tail(cmdArgv);
-      else if (argv[0].equals("repair"))
-        repair(cmdArgv);
-      else if (argv[0].equals("explode"))
-        explode(cmdArgv); 
-      else {
-        printHelp();
-        return 1;
-      }
-    }
-    catch (IllegalArgumentException e) {
-      System.err.println(argv[0] + ": " + e.getMessage());
+    
+    int returnCode = 0;
+    
+    if (argv[0].equals("tail"))
+      tail(cmdArgv);
+    else if (argv[0].equals("repair"))
+      returnCode = repair(cmdArgv);
+    else if (argv[0].equals("explode"))
+      explode(cmdArgv); 
+    else {
+      printHelp();
       return 1;
     }
-    catch (IOException e) {
-      System.err.println(argv[0] + ": " + e.getMessage());
-      return 1;
-    }
-    return 0;
+    return returnCode;
   }
   
   public void printHelp() {

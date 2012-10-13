@@ -22,4 +22,4 @@ To Run
 ------
 Assumes hadoop client is installed and configured on a working hadoop cluster.
 
-hadoop jar hdtools.jar repair block_map.txt HADOOP_INFILE LOCAL_OUTFILE
+hadoop jar hdtools.jar repair [OPTIONS] INFILE [OFFSET,LEN]...

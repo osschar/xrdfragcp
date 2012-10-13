@@ -50,6 +50,8 @@ public class HadoopTools extends Configured implements Tool {
     }
   }
   
+  private static final String REPAIR_USAGE = "repair [OPTIONS] INFILE [OFFSET,LEN]...";
+  
   private static HashMap<String, BlockLocation[]> parseMapFile(String mapFile) throws IOException {
     HashMap<String, BlockLocation[]> blockMap = new HashMap<String, BlockLocation[]>();
     BufferedReader br = null;
@@ -181,10 +183,14 @@ public class HadoopTools extends Configured implements Tool {
   private int repair(String[] argv) throws IOException {
     CommandLineParser parser = new GnuParser();
     Options options = new Options();
-    options.addOption("p", "prefix", true, "prefix");
-    options.addOption("o", "outfile", true, "outfile");
+    options.addOption("p", "prefix", true, "prefix for block files");
+    options.addOption("o", "outfile", true, "path to write outfile");
     options.addOption("v", false, "vebose");
+    options.addOption("h", "help", false, "print this message");
     //CommandLine line = parser.parse(options, argv);
+    
+    HelpFormatter formatter = new HelpFormatter();
+    
     CommandLine line;
     try {line = parser.parse(options, argv);}
     catch (ParseException e) {
@@ -192,7 +198,17 @@ public class HadoopTools extends Configured implements Tool {
       return 1; 
     }
     
+    if (line.hasOption("h")) {
+      formatter.printHelp(REPAIR_USAGE, options);
+      return 0;
+    }
+    
     String[] args = line.getArgs();
+    
+    if (args.length < 1) {
+      formatter.printHelp(REPAIR_USAGE, options);
+      return 1;
+    }
     String inFile = args[0];
     
     String basename = new File(inFile).getName(); // need basename for later
@@ -234,7 +250,7 @@ public class HadoopTools extends Configured implements Tool {
       return 1;
     }
     if (fileStatus.isDir()) {
-      System.err.println("Source must be a file: " + path);
+      System.err.println("Infile must be a file: " + path);
       return 1;
     }
       
@@ -346,10 +362,10 @@ public class HadoopTools extends Configured implements Tool {
     return returnCode;
   }
   
-  public void printHelp() {
+  private static void printHelp() {
     System.out.println("Usage: hadoop jar hdtools.jar CMD\n\n" +
         "where CMD is one of the following:\n" +
-    		"    tail FILE");
+    		"    " + REPAIR_USAGE);
   }
 
   public static void main(String[] argv) throws Exception {

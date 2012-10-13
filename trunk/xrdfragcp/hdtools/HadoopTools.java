@@ -234,41 +234,54 @@ public class HadoopTools extends Configured implements Tool {
       inHd = srcFs.open(path);
       out = new FileOutputStream(outFile);
       
-      System.out.println("init pos:" + inHd.getPos());
-      
+      long curPos = 0;
+      System.out.println("cur pos: " + curPos);
       for (BlockLocation bl : badBlocks) {
-        System.out.println("offset:" + bl.offset);
-       
-        long numToRead =  (bl.offset - inHd.getPos()) / bufSize;
-        for (long i = 0; i < numToRead; i++) {
+        //System.out.println("offset:" + bl.offset);
+        long numBytes = bl.offset - inHd.getPos();
+        System.out.println("copying " + numBytes + " bytes from hadoop");
+        
+        for (long i = 0; i < numBytes / bufSize; i++) {
           inHd.read(buffer);
           out.write(buffer);
-          System.out.println("write; pos:" + inHd.getPos());
         }
         inHd.skip(bl.nBytes);
-        System.out.println("skip; pos:" + inHd.getPos());
+        curPos += numBytes;
+        System.out.println("cur pos: " + curPos);
         
-        // now read in the good bytes from local file
-        inLocal = new FileInputStream(prefix + "-" + bl.offset + "-" + bl.nBytes);
+        // now read in the good bytes from local file        
+        String blockFile = prefix + "-" + bl.offset + "-" + bl.nBytes;
+        System.out.println("copying " + bl.nBytes + " bytes from " + blockFile);
+        
+        inLocal = new FileInputStream(blockFile);
         
         for (long i = 0; i < bl.nBytes / bufSize; i++) {
           inLocal.read(buffer);
           out.write(buffer);
         }
+        // truncate to get correct position
+        curPos += bl.nBytes / bufSize * bufSize;
         
         // get the remainder if any (only should happen if last bytes of file were bad)
         if (bl.nBytes % bufSize != 0) {
           int bytesRead;
           while ((bytesRead = inLocal.read(buffer)) >= 0)
             out.write(buffer, 0, bytesRead);
+          curPos += bl.nBytes % bufSize;
         }
-        
+        System.out.println("cur pos: " + curPos);
         inLocal.close();
       }
       // if there are any good bytes left in hadoop read the rest
       int bytesRead;
-      while ((bytesRead = inHd.read(buffer)) >= 0)
+      long oldPos = curPos;
+      while ((bytesRead = inHd.read(buffer)) >= 0) {
         out.write(buffer, 0, bytesRead);
+        curPos += bytesRead;
+      }
+      if (curPos > oldPos) {
+        System.out.println("copied remaining " + (curPos - oldPos) + " bytes from hadoop");
+      }
     
     }
     finally {

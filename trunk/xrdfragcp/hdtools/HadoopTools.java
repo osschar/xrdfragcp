@@ -143,8 +143,10 @@ public class HadoopTools extends Configured implements Tool {
     //long blockSize = srcFs.getFileStatus(path).getBlockSize();
     // use checksum size as buffer size since block is guaranteed
     // to be an integer multiple of it
-    int bufSize = getConf().getInt("io.bytes.per.checksum", 4096);
+    //int bufSize = getConf().getInt("io.bytes.per.checksum", 4096);
     
+    // trying block size for buffer instead (have to cast to int so assumes block <~ 2G)
+    int bufSize = (int) fileStatus.getBlockSize();
     byte[] buffer = new byte[bufSize];
     
     FSDataInputStream inHd = null;

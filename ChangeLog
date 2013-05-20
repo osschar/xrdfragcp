@@ -1,4 +1,10 @@
-2012-10-08  Matevz Tadel <matevz@desire.physics.ucsd.edu>
+2013-05-20  Matevz Tadel <matevz.tadel@ijs.si>
+
+	* xrdfragcp.cxx:
+	Add option --cmsclientsim that emulates reading of file
+	in a bursty fashion.
+
+2012-10-08  Matevz Tadel <matevz.tadel@ijs.si>
 
 	* xrd-hadoop-healer.pl:
 	Read checksums written by Phedex and store them into a hash ... if

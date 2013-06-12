@@ -13,17 +13,17 @@
 
 
 const char *prefix  = "root://xrootd-proxy.t2.ucsd.edu/";
-const char *postfix = "?tried=xrootd.t2.ucsd.edu";
+
+// const char *postfix = "?tried=xrootd.t2.ucsd.edu";
+const char *postfix = " > /dev/null 2>&1 &";
 
 
 int main()
 {
-  gSystem->Load("libSXrdClasses");
-
   // Chain up several reports
   TChain mychain("XrdFar");
 
-  mychain.Add("/net/xrootd.t2/data/xrdmon/far/xmfar-2013-03-03-*.root");
+  mychain.Add("/net/xrootd.t2/data/xrdmon/far/xmfar-2013-06-06-*.root");
 
   //mychain.Add("/net/xrootd.t2/data/xrdmon/far/xmfar-2013-03-*.root");
   //mychain.Add("/net/xrootd.t2/data/xrdmon/far/xmfar-2013-04-*.root");
@@ -39,7 +39,7 @@ int main()
   mychain.SetBranchAddress("S.", &sp);
 
   Long64_t N = mychain.GetEntries();
-  printf("Total of %lld entries found.\n", N);
+  printf("# Total of %lld entries found.\n", N);
 
   std::multimap<Long64_t, Long64_t> time_to_entry;
 
@@ -70,9 +70,18 @@ int main()
 
     if (i->first > prev_time && prev_time != 0)
     {
-      printf("sleep %lld \n", i->first - prev_time);
+      Long64_t dt = i->first - prev_time;
+
+      // HACK ... do not wait more than 100 seconds.
+      if (dt > 100)
+        dt = 100;
+
+      printf("echo sleep %lld\n", dt);
+      printf("sleep %lld\n", dt);
     }
     prev_time = i->first;
+
+    printf("echo Opening %s\n", F.mName.Data());
 
     printf("xrdfragcp --cmsclientsim %lld %d %lld %s%s%s\n",
            TMath::Nint(1024*1024*F.mReadStats.mSumX),

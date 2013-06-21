@@ -21,25 +21,30 @@ const char *postfix = " > /dev/null 2>&1 &";
 int main()
 {
   // Chain up several reports
-  TChain mychain("XrdFar");
+  TChain chain("XrdFar");
 
-  mychain.Add("/net/xrootd.t2/data/xrdmon/far/xmfar-2013-06-06-*.root");
+  chain.Add("/net/xrootd.t2/data/xrdmon/far/xmfar-2013-03-03-*.root");
+  chain.Add("/net/xrootd.t2/data/xrdmon/far/xmfar-2013-03-04-*.root");
+  chain.Add("/net/xrootd.t2/data/xrdmon/far/xmfar-2013-03-05-*.root");
 
-  //mychain.Add("/net/xrootd.t2/data/xrdmon/far/xmfar-2013-03-*.root");
-  //mychain.Add("/net/xrootd.t2/data/xrdmon/far/xmfar-2013-04-*.root");
-  //mychain.Add("/net/xrootd.t2/data/xrdmon/far/xmfar-2013-05-*.root");
+  // chain.ls();
 
   // Get set up to read domain data from the chain
   SXrdFileInfo   F, *fp = &F;
   SXrdUserInfo   U, *up = &U;
   SXrdServerInfo S, *sp = &S;
 
-  mychain.SetBranchAddress("F.", &fp);
-  mychain.SetBranchAddress("U.", &up);
-  mychain.SetBranchAddress("S.", &sp);
+  chain.SetBranchAddress("F.", &fp);
+  chain.SetBranchAddress("U.", &up);
+  chain.SetBranchAddress("S.", &sp);
 
-  Long64_t N = mychain.GetEntries();
+  Long64_t N = chain.GetEntries();
   printf("# Total of %lld entries found.\n", N);
+
+
+  chain.GetEntry(0);
+  Long64_t first_close_time = F.mCloseTime;
+
 
   std::multimap<Long64_t, Long64_t> time_to_entry;
 
@@ -48,7 +53,12 @@ int main()
 
   for (Long64_t i = 0; i < N; ++i)
   {
-    mychain.GetEntry(i);
+    chain.GetEntry(i);
+
+    // Select only files opened after the close-time of first entry.
+    // This prevents a slow raise-up in file-open rate.
+    if (F.mOpenTime < first_close_time)
+      continue;
 
     if ( ! U.mFromDomain.EndsWith("t2.ucsd.edu"))
       continue;
@@ -66,15 +76,17 @@ int main()
 
   for (auto i = time_to_entry.begin(); i != time_to_entry.end(); ++i)
   {
-    mychain.GetEntry(i->second);
+    chain.GetEntry(i->second);
 
     if (i->first > prev_time && prev_time != 0)
     {
       Long64_t dt = i->first - prev_time;
 
       // HACK ... do not wait more than 100 seconds.
-      if (dt > 100)
-        dt = 100;
+      // This was needed due to slow ramp-up of file opens as entries get
+      // written out at close-time.
+      // if (dt > 100)
+      //   dt = 100;
 
       printf("echo sleep %lld\n", dt);
       printf("sleep %lld\n", dt);
